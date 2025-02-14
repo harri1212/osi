@@ -64,3 +64,57 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
+const repoOwner = "harri1212";
+const repoName = "oshi-sns";
+const filePath = "posts.json";
+const token = "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"; // GitHubのPersonal Access Token
+
+async function getPosts() {
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+  const response = await fetch(url, { headers: { Authorization: `token ${token}` } });
+  const data = await response.json();
+  const content = atob(data.content);
+  return JSON.parse(content).posts;
+}
+
+async function savePost(content) {
+  const posts = await getPosts();
+  posts.push({ content });
+
+  const newContent = btoa(JSON.stringify({ posts }, null, 2)); // Base64 エンコード
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `token ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: "Add new post",
+      content: newContent,
+      sha: (await fetch(url, { headers: { Authorization: `token ${token}` } })).json().sha
+    })
+  });
+
+  if (response.ok) {
+    console.log("投稿が保存されました！");
+    loadPosts();
+  } else {
+    console.error("投稿の保存に失敗しました");
+  }
+}
+
+async function loadPosts() {
+  const posts = await getPosts();
+  const postContainer = document.getElementById("postContainer");
+  postContainer.innerHTML = "";
+
+  posts.forEach(post => {
+    const div = document.createElement("div");
+    div.textContent = post.content;
+    postContainer.appendChild(div);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", loadPosts);
